@@ -1,0 +1,53 @@
+# Loudoun County, VA configuration
+county:
+  name: "Loudoun County"
+  state: "VA"
+  fips_state: "51"
+  fips_county: "107"
+  fips_full: "51107"
+
+# Treatment ring definitions (miles)
+treatment_rings:
+  inner: [0, 1.0]
+  middle: [1.0, 2.0]
+  outer: [2.0, 3.0]
+  buffer: [3.0, 4.0]  # excluded from both treatment and control
+  control: [4.0, 8.0]
+
+# Key dates for event study
+events:
+  silver_line_phase2: "2022-11-15"
+  zoning_reform_phase1: "2025-03-18"
+
+# Data source URLs
+data_sources:
+  property_sales: "https://www.loudoun.gov/649/Public-Real-Estate-Reports"
+  building_permits: "https://www.loudoun.gov/1164/Issued-Building-Permit-Reports"
+  geohub: "https://geohub-loudoungis.opendata.arcgis.com/"
+  nvrc_dc_map: "https://www.novaregion.org/1598/Data-Centers"
+  fhfa_hpi: "https://www.fhfa.gov/data/hpi/datasets"
+  census_acs: "https://data.census.gov/"
+  va_school_quality: "https://schoolquality.virginia.gov/download-data"
+
+# Hedonic model controls
+hedonic_controls:
+  property:
+    - square_feet
+    - lot_size
+    - bedrooms
+    - bathrooms
+    - year_built
+    - property_type  # SFH, condo, townhouse
+    - stories
+    - garage
+  neighborhood:
+    - median_household_income
+    - school_quality_rating
+    - crime_rate
+    - dist_to_metro_station
+    - dist_to_dulles_airport
+    - dist_to_highway
+    - pct_residential_zoning
+  time:
+    - year_quarter_fe
+    - month_of_year_fe
