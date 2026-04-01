@@ -98,6 +98,63 @@ with open('$RAW/loudoun_parcels_20k.geojson', 'w') as f:
 print(f'  Downloaded {len(all_features)} parcels')
 "
 
+# 9. FHFA ZIP5-level HPI (Excel format)
+echo "[9/14] FHFA ZIP5 HPI..."
+curl -sL -o "$RAW/fhfa_zip5_hpi.csv" \
+  "https://www.fhfa.gov/hpi/download/annual/hpi_at_zip5.csv"
+echo "  Downloaded: $(du -h "$RAW/fhfa_zip5_hpi.csv" | cut -f1)"
+
+# 10. FHFA ZIP3-level HPI
+echo "[10/14] FHFA ZIP3 HPI..."
+curl -sL -o "$RAW/fhfa_zip3_hpi.csv" \
+  "https://www.fhfa.gov/hpi/download/annual/hpi_at_zip3.csv"
+echo "  Downloaded: $(du -h "$RAW/fhfa_zip3_hpi.csv" | cut -f1)"
+
+# 11. NVRC Data Centers (265 locations across NoVA with addresses & jurisdictions)
+echo "[11/14] NVRC Regional Data Centers..."
+curl -s -o "$RAW/nvrc_data_centers.geojson" \
+  "https://services5.arcgis.com/6MUPhDX27Ne3DNOw/arcgis/rest/services/Data_Centers/FeatureServer/0/query?where=1%3D1&outFields=*&f=geojson&resultRecordCount=5000"
+echo "  Downloaded: $(du -h "$RAW/nvrc_data_centers.geojson" | cut -f1)"
+
+# 12. Full Loudoun County Parcels (132k)
+echo "[12/14] Loudoun County Parcels (full 132k)..."
+python3 -c "
+import json, urllib.request, time
+all_features, offset, batch = [], 0, 3000
+while True:
+    url = f'https://logis.loudoun.gov/gis/rest/services/COL/LandRecords/MapServer/5/query?where=1%3D1&outFields=*&f=geojson&resultRecordCount={batch}&resultOffset={offset}'
+    try:
+        with urllib.request.urlopen(url, timeout=90) as resp:
+            data = json.load(resp)
+    except Exception as e:
+        print(f'  Retry at {offset}: {e}')
+        time.sleep(2)
+        continue
+    feats = data.get('features', [])
+    if not feats: break
+    all_features.extend(feats)
+    offset += batch
+    if offset % 30000 == 0: print(f'  {len(all_features):,} parcels...')
+    if len(feats) < batch: break
+with open('$RAW/loudoun_parcels_full.geojson', 'w') as f:
+    json.dump({'type': 'FeatureCollection', 'features': all_features}, f)
+print(f'  Downloaded {len(all_features):,} parcels')
+"
+
+# 13. ACS for neighboring counties (Fairfax 059, Prince William 153)
+echo "[13/14] ACS for Fairfax & Prince William counties..."
+for county_fips in 059 153; do
+  curl -s -o "$RAW/acs_51${county_fips}_tracts_2022.json" \
+    "https://api.census.gov/data/2022/acs/acs5?get=${ACS_VARS}&for=tract:*&in=state:51%20county:${county_fips}${KEY_PARAM}"
+done
+echo "  Downloaded ACS for Fairfax and Prince William"
+
+# 14. Realtor.com ZIP-level inventory (large file ~800MB)
+echo "[14/14] Realtor.com ZIP inventory..."
+curl -sL -o "$RAW/realtor_zip_inventory.csv" \
+  "https://econdata.s3-us-west-2.amazonaws.com/Reports/Core/RDC_Inventory_Core_Metrics_Zip_History.csv"
+echo "  Downloaded: $(du -h "$RAW/realtor_zip_inventory.csv" | cut -f1)"
+
 echo ""
 echo "=== Download complete ==="
 echo "Run 'python -m src.data.load_all' to verify all datasets."
